@@ -37,7 +37,7 @@ func formatResponseMap(responses map[string]string) string {
 }
 
 // for randstring
-const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"
 const (
 	letterIdxBits = 6                    // 6 bits to represent a letter index
 	letterIdxMask = 1<<letterIdxBits - 1 // All 1-bits, as many as letterIdxBits
@@ -85,22 +85,31 @@ func main() {
 		// if fuzz is enabled, append fuzz to toAppend
 		if *fuzz {
 			var fuzzedUrls []string
+			fuzzString := RandStringBytesMaskImprSrc(rand.Intn(50))
 			for _, url := range urls {
 				// rand string 0-50 chars
-				fuzzedUrls = append(fuzzedUrls, fmt.Sprintf("%s%s", url, RandStringBytesMaskImprSrc(rand.Intn(50))))
+				fuzzedUrls = append(fuzzedUrls, fmt.Sprintf("%s%s", url, fuzzString))
 			}
-			urls = fuzzedUrls
+			responses = append(responses, getResponses(fuzzedUrls))
+			continue
 		}
 		responses = append(responses, getResponses(urls))
 	}
 
 	// print formatted responses
+	inconsistentTally := 0
 	for _, responsesMap := range responses {
 		// tally responses
-		// responsesTally := make(map[string]int)
-		// for url, response := range responsesMap {
-
-		// }
+		responsesTally := make(map[string]int)
+		for _, response := range responsesMap {
+			responsesTally[response]++
+		}
+		if len(responsesTally) > 1 {
+			fmt.Println("Inconsistent!")
+			inconsistentTally++
+		}
 		fmt.Println(formatResponseMap(responsesMap) + "\n")
 	}
+	fmt.Println(fmt.Sprintf("%v total inconsistent responses in %v trials. Rate: %v%%.",
+		inconsistentTally, *sampleSize, float32(inconsistentTally)/float32(*sampleSize)*100))
 }
